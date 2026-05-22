@@ -388,6 +388,35 @@
         .btn-cancel-pin { background: #f0f2f5; color: #1e3a5f; border: 1px solid #ccc !important; }
         body.dark .btn-cancel-pin { background: #0f3460; color: #eee; }
 
+
+        /* ===== STICKY HEADER + DATE + STATS ===== */
+        .sticky-top {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: #f0f2f5;
+            padding-bottom: 4px;
+        }
+        body.dark .sticky-top { background: #1a1a2e; }
+
+        /* Logout button */
+        .logout-btn {
+            background: none;
+            border: 1.5px solid #e53935;
+            color: #e53935;
+            border-radius: 10px;
+            padding: 5px 10px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex; align-items: center; gap: 4px;
+            transition: background 0.15s;
+            white-space: nowrap;
+        }
+        .logout-btn:hover { background: #fdecea; }
+        body.dark .logout-btn { border-color: #ef9a9a; color: #ef9a9a; }
+        body.dark .logout-btn:hover { background: rgba(239,154,154,0.1); }
+
     </style>
 </head>
 <body>
@@ -445,25 +474,28 @@
 <div class="overlay" id="overlay"></div>
 
 <div class="container">
-    <div class="header">
-        <div class="title-container">
-            <!-- Се тиреча дар дохили номи коллеҷ, пеш аз матн -->
-            <button class="menu-icon-title" id="menuBtn">☰</button>
-            <h1>Коллеҷи тиббӣ-инноватсионии шаҳри Бохтар</h1>
+    <div class="sticky-top">
+        <div class="header">
+            <div class="title-container">
+                <!-- Се тиреча дар дохили номи коллеҷ, пеш аз матн -->
+                <button class="menu-icon-title" id="menuBtn">☰</button>
+                <h1>Коллеҷи тиббӣ-инноватсионии шаҳри Бохтар</h1>
+            </div>
+            <div style="display: flex; gap:6px; align-items:center;">
+                <input type="text" id="searchInput" class="search-box" placeholder="🔍 Ҷустуҷӯ...">
+                <span id="totalCount" class="total-employees"></span>
+                <button class="logout-btn" id="logoutBtn" title="Баромадан">🚪 Баромад</button>
+            </div>
         </div>
-        <div style="display: flex; gap:5px; align-items:center;">
-            <input type="text" id="searchInput" class="search-box" placeholder="🔍 Ҷустуҷӯ...">
-            <span id="totalCount" class="total-employees"></span>
+
+        <div class="date-bar">
+            <span>📅 Санаи ҳозирӣ:</span>
+            <input type="date" id="attendanceDate" style="padding:5px 8px; border-radius:30px; border:1px solid #ccc; font-size:11px;">
+            <button id="saveAttendanceBtn" style="background:#2e7d32; padding:5px 12px; font-size:11px;">💾 Сабти ҳозирӣ</button>
         </div>
-    </div>
 
-    <div class="date-bar">
-        <span>📅 Санаи ҳозирӣ:</span>
-        <input type="date" id="attendanceDate" style="padding:5px 8px; border-radius:30px; border:1px solid #ccc; font-size:11px;">
-        <button id="saveAttendanceBtn" style="background:#2e7d32; padding:5px 12px; font-size:11px;">💾 Сабти ҳозирӣ</button>
+        <div class="stats" id="statsPanel"></div>
     </div>
-
-    <div class="stats" id="statsPanel"></div>
 
     <div class="table-wrapper">
         <table id="mainTable">
@@ -828,6 +860,17 @@
     document.getElementById("searchInput").addEventListener("input",()=>renderAll());
     document.getElementById("attendanceDate").value=currentDate;
     loadData();
+
+    // ===== БАРОМАДАН (LOGOUT) =====
+    document.getElementById('logoutBtn').addEventListener('click', function() {
+        if(confirm('Аз барнома баромадан мехоҳед?')) {
+            document.getElementById('pinScreen').classList.remove('hidden');
+            pinBuffer = '';
+            updatePinDots();
+            document.getElementById('pinSubtitle').textContent = '4 рақамаи PIN-код';
+        }
+    });
+
 
     // ======================= PIN КОД =======================
     const DEFAULT_PIN = '1234';
