@@ -764,6 +764,9 @@
         if(savedAtt) attendanceRecords = JSON.parse(savedAtt);
         renderAll();
         document.getElementById("totalCount").innerText = `👥 ${employees.length} нафар`;
+        // Маълумот тайёр — ҳозир birthday санҷаш
+        requestNotificationPermission();
+        showBirthdayBanner();
     }
 
     function saveEmployees() { localStorage.setItem("hr_employees_final_v9", JSON.stringify(employees)); }
@@ -1051,6 +1054,60 @@
             document.getElementById('pinScreen').classList.remove('hidden');
         }
     });
+
+    // ======================= BIRTHDAY ФУНКСИЯҲО =======================
+    function getTodayBirthdays() {
+        const today = new Date();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        return employees.filter(emp => {
+            if (!emp.birthday) return false;
+            const p = emp.birthday.split('-');
+            if (p.length < 3) return false;
+            return p[1] === mm && p[2] === dd;
+        });
+    }
+
+    function checkBirthdaysAndBadge() {
+        const birthdays = getTodayBirthdays();
+        if (birthdays.length > 0) {
+            if ('setAppBadge' in navigator) navigator.setAppBadge(birthdays.length).catch(()=>{});
+            if (Notification.permission === 'granted') {
+                const names = birthdays.map(e => e.fullname.split(' ').slice(0,2).join(' ')).join(', ');
+                new Notification('🎂 Имрӯз таваллуд!', {
+                    body: `${names} — имрӯз зодрӯз доранд!`,
+                    icon: './icon-192.png',
+                    badge: './icon-192.png',
+                    tag: 'birthday-today',
+                    renotify: true
+                });
+            }
+        } else {
+            if ('clearAppBadge' in navigator) navigator.clearAppBadge().catch(()=>{});
+        }
+    }
+
+    function requestNotificationPermission() {
+        if (!('Notification' in window)) { checkBirthdaysAndBadge(); return; }
+        if (Notification.permission === 'default') {
+            Notification.requestPermission().then(perm => { checkBirthdaysAndBadge(); });
+        } else {
+            checkBirthdaysAndBadge();
+        }
+    }
+
+    function showBirthdayBanner() {
+        const birthdays = getTodayBirthdays();
+        const existing = document.getElementById('birthdayBanner');
+        if (existing) existing.remove();
+        if (birthdays.length === 0) return;
+        const names = birthdays.map(e => `<strong>${e.fullname.split(' ').slice(0,2).join(' ')}</strong>`).join(', ');
+        const banner = document.createElement('div');
+        banner.id = 'birthdayBanner';
+        banner.innerHTML = `🎂 Имрӯз зодрӯз доранд: ${names} &nbsp;<button onclick="document.getElementById('birthdayBanner').remove()" style="background:none;border:none;cursor:pointer;font-size:16px;float:right;">✕</button>`;
+        banner.style.cssText = 'background:#fff3e0;border-left:4px solid #ff9800;border-radius:12px;padding:10px 14px;margin-bottom:10px;font-size:13px;color:#e65100;position:relative;';
+        document.querySelector('.sticky-top').insertAdjacentElement('afterend', banner);
+    }
 
     loadData();
 
