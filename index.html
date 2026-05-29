@@ -465,7 +465,6 @@
 
 <div class="side-menu" id="sideMenu">
     <button id="menuAddBtn">➕ Корманди нав</button>
-    <button id="menuBirthdayBtn">🎂 Зодрӯзҳои имрӯз</button>
     <button id="menuExportExcelBtn">📎 Export Excel (Ҳозирӣ)</button>
     <button id="menuExportJsonBtn">📄 Export JSON</button>
     <button id="menuImportJsonBtn">📂 Import JSON</button>
@@ -528,7 +527,7 @@
         <input type="text" id="empPhone" placeholder="Телефон">
         <input type="text" id="empEducation" placeholder="Маълумот (олӣ, миёнаи касбӣ)">
         <label style="font-size:12px; color:#666; margin-top:4px; display:block;">🎂 Санаи таваллуд</label>
-        <input type="date" id="empBirthday" placeholder="Санаи таваллуд (ихтиёрӣ)">
+        <input type="date" id="empBirthday">
         <select id="empCategory">
             <option value="Маъмурият">Маъмурият</option>
             <option value="Кафедраи гуманитарӣ">Кафедраи гуманитарӣ</option>
@@ -765,8 +764,6 @@
         if(savedAtt) attendanceRecords = JSON.parse(savedAtt);
         renderAll();
         document.getElementById("totalCount").innerText = `👥 ${employees.length} нафар`;
-        // Birthday check баъди бор шудан
-        setTimeout(() => { requestNotificationPermission(); showBirthdayBanner(); }, 500);
     }
 
     function saveEmployees() { localStorage.setItem("hr_employees_final_v9", JSON.stringify(employees)); }
@@ -794,18 +791,17 @@
                 tbody.innerHTML += `<tr class="category-separator"><td colspan="10"><strong>📁 ${currentCategory}</strong></td><tr>`;
             }
             const checked = presentIds.includes(emp.id) ? "checked" : "";
-            // Зодрӯзро формат мекунем: YYYY-MM-DD → DD.MM.YYYY
+            // Зодрӯз формат: YYYY-MM-DD → DD.MM.YYYY
             let bdDisplay = '-';
-            let bdHighlight = '';
+            let bdStyle = '';
             if(emp.birthday) {
-                const parts = emp.birthday.split('-');
-                if(parts.length === 3) {
-                    bdDisplay = `${parts[2]}.${parts[1]}.${parts[0]}`;
-                    // Агар имрӯз зодрӯз бошад — сурх нишон медиҳем
-                    const today = new Date();
-                    const mm = String(today.getMonth()+1).padStart(2,'0');
-                    const dd = String(today.getDate()).padStart(2,'0');
-                    if(parts[1]===mm && parts[2]===dd) bdHighlight = 'background:#fff3e0;color:#e65100;font-weight:bold;';
+                const p = emp.birthday.split('-');
+                if(p.length === 3) {
+                    bdDisplay = `${p[2]}.${p[1]}.${p[0]}`;
+                    const t = new Date();
+                    const mm = String(t.getMonth()+1).padStart(2,'0');
+                    const dd = String(t.getDate()).padStart(2,'0');
+                    if(p[1]===mm && p[2]===dd) bdStyle = 'background:#fff3e0;color:#e65100;font-weight:bold;';
                 }
             }
             tbody.innerHTML += `<tr>
@@ -815,7 +811,7 @@
                 <td>${escapeHtml(emp.position)}</td>
                 <td>${escapeHtml(emp.orderNumber || '-')}</td>
                 <td>${escapeHtml(emp.phone || '-')}</td>
-                <td style="${bdHighlight}">${bdHighlight ? '🎂 ' : ''}${bdDisplay}</td>
+                <td style="${bdStyle}">${bdStyle ? '🎂 ' : ''}${bdDisplay}</td>
                 <td>${escapeHtml(emp.education || '-')}</td>
                 <td>${escapeHtml(emp.category)}</td>
                 <td class="actions">
@@ -865,107 +861,7 @@
     function importJson(file) { const r=new FileReader(); r.onload=e=>{ try{ const d=JSON.parse(e.target.result); if(d.employees) employees=d.employees; if(d.attendanceRecords) attendanceRecords=d.attendanceRecords; const maxId=employees.length?Math.max(...employees.map(e=>e.id)):0; nextId=maxId+1; saveEmployees(); saveAttendance(); renderAll(); document.getElementById("totalCount").innerText=`👥 ${employees.length} нафар`; alert("Импорт шуд!"); } catch(err){ alert("Хатогӣ: "+err.message); } }; r.readAsText(file); }
     function toggleTheme() { document.body.classList.toggle("dark"); }
 
-    const menuBtn=document.getElementById("menuBtn"), sideMenu=document.getElementById("sideMenu"), overlay=document.getElementById("overlay");
-    function closeMenu(){ sideMenu.classList.remove("open"); overlay.classList.remove("show"); }
-    function openMenu(){ sideMenu.classList.add("open"); overlay.classList.add("show"); }
-    menuBtn.onclick=()=>{ if(sideMenu.classList.contains("open")) closeMenu(); else openMenu(); };
-    overlay.onclick=closeMenu;
-    document.getElementById("menuAddBtn").onclick=()=>{ closeMenu(); editingId=null; document.getElementById("empFullname").value=""; document.getElementById("empPosition").value=""; document.getElementById("empOrder").value=""; document.getElementById("empPhone").value=""; document.getElementById("empEducation").value=""; document.getElementById("empBirthday").value=""; document.getElementById("empCategory").value="Маъмурият"; document.getElementById("modalTitle").innerText="Иловаи корманд"; document.getElementById("employeeModal").classList.add("show"); };
-    document.getElementById("menuExportExcelBtn").onclick=()=>{ closeMenu(); exportAttendanceExcel(); };
-    document.getElementById("menuExportJsonBtn").onclick=()=>{ closeMenu(); exportJson(); };
-    document.getElementById("menuImportJsonBtn").onclick=()=>{ closeMenu(); const i=document.createElement('input'); i.type='file'; i.accept='.json'; i.onchange=e=>{ if(e.target.files[0]) importJson(e.target.files[0]); }; i.click(); };
-    document.getElementById("menuThemeBtn").onclick=()=>{ closeMenu(); toggleTheme(); };
-    document.getElementById("saveAttendanceBtn").onclick=()=>{ const ids=[...new Set([...document.querySelectorAll('.present-check')].filter(cb=>cb.checked).map(cb=>parseInt(cb.dataset.id)))]; setAttendance(currentDate,ids); alert(`Ҳозирӣ барои ${currentDate} сабт шуд! (${ids.length} нафар)`); };
-    document.getElementById("attendanceDate").addEventListener("change",(e)=>{ currentDate=e.target.value; renderAll(); });
-    document.getElementById("modalSaveBtn").onclick=()=>{ const fullname=document.getElementById("empFullname").value.trim(); if(!fullname){ alert("Номи пурра ворид кунед!"); return; } const data={ fullname, position:document.getElementById("empPosition").value.trim(), orderNumber:document.getElementById("empOrder").value.trim(), phone:document.getElementById("empPhone").value.trim(), education:document.getElementById("empEducation").value.trim(), birthday:document.getElementById("empBirthday").value.trim(), category:document.getElementById("empCategory").value }; if(editingId){ const idx=employees.findIndex(e=>e.id===editingId); if(idx!==-1) employees[idx]={...employees[idx],...data}; }else{ employees.push({id:nextId++,...data}); } saveEmployees(); document.getElementById("employeeModal").classList.remove("show"); renderAll(); document.getElementById("totalCount").innerText=`👥 ${employees.length} нафар`; checkBirthdaysAndBadge(); };
-    document.getElementById("modalCloseBtn").onclick=()=>{ document.getElementById("employeeModal").classList.remove("show"); };
-    document.getElementById("searchInput").addEventListener("input",()=>renderAll());
-    document.getElementById("attendanceDate").value=currentDate;
-    loadData();
-
-    // ======================= BIRTHDAY BADGE & NOTIFICATION =======================
-    function getTodayBirthdays() {
-        const today = new Date();
-        const mm = String(today.getMonth() + 1).padStart(2, '0');
-        const dd = String(today.getDate()).padStart(2, '0');
-        return employees.filter(emp => {
-            if (!emp.birthday) return false;
-            const parts = emp.birthday.split('-');
-            if (parts.length < 3) return false;
-            return parts[1] === mm && parts[2] === dd;
-        });
-    }
-
-    function checkBirthdaysAndBadge() {
-        const birthdays = getTodayBirthdays();
-        if (birthdays.length > 0) {
-            // Badge дар болои иконаи PWA
-            if ('setAppBadge' in navigator) {
-                navigator.setAppBadge(birthdays.length).catch(()=>{});
-            }
-            // Notification (агар иҷозат дода шуда бошад)
-            if (Notification.permission === 'granted') {
-                const names = birthdays.map(e => e.fullname.split(' ').slice(0,2).join(' ')).join(', ');
-                new Notification('🎂 Имрӯз таваллуд!', {
-                    body: `${names} — имрӯз зодрӯз доранд!`,
-                    icon: './icon-192.png',
-                    badge: './icon-192.png',
-                    tag: 'birthday-today',
-                    renotify: true
-                });
-            }
-        } else {
-            // Badge тоза мекунем
-            if ('clearAppBadge' in navigator) {
-                navigator.clearAppBadge().catch(()=>{});
-            }
-        }
-    }
-
-    function requestNotificationPermission() {
-        if (!('Notification' in window)) return;
-        if (Notification.permission === 'default') {
-            Notification.requestPermission().then(perm => {
-                if (perm === 'granted') {
-                    checkBirthdaysAndBadge();
-                }
-            });
-        } else {
-            checkBirthdaysAndBadge();
-        }
-    }
-
-    // Birthday banner дар барнома
-    function showBirthdayBanner() {
-        const birthdays = getTodayBirthdays();
-        const existingBanner = document.getElementById('birthdayBanner');
-        if (existingBanner) existingBanner.remove();
-        if (birthdays.length === 0) return;
-        const names = birthdays.map(e => `<strong>${e.fullname.split(' ').slice(0,2).join(' ')}</strong>`).join(', ');
-        const banner = document.createElement('div');
-        banner.id = 'birthdayBanner';
-        banner.innerHTML = `🎂 Имрӯз зодрӯз доранд: ${names} &nbsp;<button onclick="document.getElementById('birthdayBanner').remove()" style="background:none;border:none;cursor:pointer;font-size:16px;float:right;">✕</button>`;
-        banner.style.cssText = 'background:#fff3e0;border-left:4px solid #ff9800;border-radius:12px;padding:10px 14px;margin-bottom:10px;font-size:13px;color:#e65100;position:relative;';
-        const stickyTop = document.querySelector('.sticky-top');
-        stickyTop.insertAdjacentElement('afterend', banner);
-    }
-
-    // Иҷро кардан
-    requestNotificationPermission();
-    showBirthdayBanner();
-
-    // ===== БАРОМАДАН (LOGOUT) =====
-    document.getElementById('logoutBtn').addEventListener('click', function() {
-        if(confirm('Аз барнома баромадан мехоҳед?')) {
-            document.getElementById('pinScreen').classList.remove('hidden');
-            pinBuffer = '';
-            updatePinDots();
-            document.getElementById('pinSubtitle').textContent = '4 рақамаи PIN-код';
-        }
-    });
-
-
-    // ======================= PIN КОД =======================
+    // ======================= PIN КОД — АВВАЛ ЭЪЛОН =======================
     const DEFAULT_PIN = '1234';
     let pinBuffer = '';
     let pinAttempts = 0;
@@ -975,44 +871,45 @@
     }
 
     function pinPress(digit) {
-        if(pinBuffer.length >= 4) return;
+        if (pinBuffer.length >= 4) return;
         pinBuffer += digit;
         updatePinDots();
-        if(pinBuffer.length === 4) {
+        if (pinBuffer.length === 4) {
             setTimeout(checkPin, 150);
         }
     }
 
     function pinDel() {
-        if(pinBuffer.length > 0) {
+        if (pinBuffer.length > 0) {
             pinBuffer = pinBuffer.slice(0, -1);
             updatePinDots();
         }
     }
 
-    function updatePinDots(error) {
-        for(let i = 0; i < 4; i++) {
+    function updatePinDots() {
+        for (let i = 0; i < 4; i++) {
             const dot = document.getElementById('d' + i);
             dot.classList.remove('filled', 'error');
-            if(i < pinBuffer.length) {
-                dot.classList.add(error ? 'error' : 'filled');
-            }
+            if (i < pinBuffer.length) dot.classList.add('filled');
+        }
+    }
+
+    function showPinError() {
+        for (let i = 0; i < 4; i++) {
+            document.getElementById('d' + i).classList.remove('filled');
+            document.getElementById('d' + i).classList.add('error');
         }
     }
 
     function checkPin() {
-        if(pinBuffer === getPin()) {
+        if (pinBuffer === getPin()) {
             document.getElementById('pinScreen').classList.add('hidden');
             pinBuffer = '';
             pinAttempts = 0;
             updatePinDots();
         } else {
             pinAttempts++;
-            // Show error (red dots)
-            for(let i = 0; i < 4; i++) {
-                document.getElementById('d' + i).classList.remove('filled');
-                document.getElementById('d' + i).classList.add('error');
-            }
+            showPinError();
             document.getElementById('pinSubtitle').textContent = '❌ PIN нодуруст! Кӯшиш ' + pinAttempts;
             setTimeout(() => {
                 pinBuffer = '';
@@ -1023,9 +920,8 @@
     }
 
     function pinExit() {
-        if(confirm('Аз барнома баромадан мехоҳед?')) {
+        if (confirm('Аз барнома баромадан мехоҳед?')) {
             window.close();
-            // fallback
             document.body.innerHTML = '<div style="text-align:center;padding:50px;font-size:1.2rem;color:#888;">Барнома пӯшида шуд</div>';
         }
     }
@@ -1034,15 +930,9 @@
         const oldPin = document.getElementById('cpOld').value.trim();
         const newPin = document.getElementById('cpNew').value.trim();
         const confirm2 = document.getElementById('cpConfirm').value.trim();
-        if(oldPin !== getPin()) {
-            alert('❌ PIN-и кунунӣ нодуруст!'); return;
-        }
-        if(newPin.length !== 4 || !/^\d{4}$/.test(newPin)) {
-            alert('❌ PIN бояд 4 рақам бошад!'); return;
-        }
-        if(newPin !== confirm2) {
-            alert('❌ PIN-и нав мувофиқат намекунад!'); return;
-        }
+        if (oldPin !== getPin()) { alert('❌ PIN-и кунунӣ нодуруст!'); return; }
+        if (newPin.length !== 4 || !/^\d{4}$/.test(newPin)) { alert('❌ PIN бояд 4 рақам бошад!'); return; }
+        if (newPin !== confirm2) { alert('❌ PIN-и нав мувофиқат намекунад!'); return; }
         localStorage.setItem('app_pin', newPin);
         document.getElementById('changePinModal').classList.remove('show');
         document.getElementById('cpOld').value = '';
@@ -1051,8 +941,67 @@
         alert('✅ PIN муваффақона иваз шуд!');
     }
 
-    // Menyu tugmasi
-    document.getElementById('menuChangePinBtn').onclick = () => {
+    // ===== PIN КЛАВИАТУРА — TOUCH + CLICK =====
+    function addPinHandler(btn, action) {
+        let touched = false;
+        btn.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            touched = true;
+            action();
+            setTimeout(() => { touched = false; }, 600);
+        }, { passive: false });
+        btn.addEventListener('click', function() {
+            if (touched) return;
+            action();
+        });
+    }
+
+    document.querySelectorAll('.pin-key[data-digit]').forEach(btn => {
+        addPinHandler(btn, () => pinPress(btn.getAttribute('data-digit')));
+    });
+    addPinHandler(document.getElementById('pinDelBtn'), pinDel);
+    addPinHandler(document.getElementById('pinExitBtn'), pinExit);
+
+    // Физикии клавиатура (компютер)
+    document.addEventListener('keydown', (e) => {
+        if (document.getElementById('pinScreen').classList.contains('hidden')) return;
+        if (e.key >= '0' && e.key <= '9') pinPress(e.key);
+        if (e.key === 'Backspace') pinDel();
+    });
+
+    // ======================= МЕНЮИ АСОСӢ =======================
+    const menuBtn = document.getElementById("menuBtn");
+    const sideMenu = document.getElementById("sideMenu");
+    const overlay = document.getElementById("overlay");
+
+    function closeMenu() { sideMenu.classList.remove("open"); overlay.classList.remove("show"); }
+    function openMenu() { sideMenu.classList.add("open"); overlay.classList.add("show"); }
+
+    menuBtn.onclick = () => { if (sideMenu.classList.contains("open")) closeMenu(); else openMenu(); };
+    overlay.onclick = closeMenu;
+
+    document.getElementById("menuAddBtn").onclick = () => {
+        closeMenu(); editingId = null;
+        document.getElementById("empFullname").value = "";
+        document.getElementById("empPosition").value = "";
+        document.getElementById("empOrder").value = "";
+        document.getElementById("empPhone").value = "";
+        document.getElementById("empEducation").value = "";
+        document.getElementById("empBirthday").value = "";
+        document.getElementById("empCategory").value = "Маъмурият";
+        document.getElementById("modalTitle").innerText = "Иловаи корманд";
+        document.getElementById("employeeModal").classList.add("show");
+    };
+    document.getElementById("menuExportExcelBtn").onclick = () => { closeMenu(); exportAttendanceExcel(); };
+    document.getElementById("menuExportJsonBtn").onclick = () => { closeMenu(); exportJson(); };
+    document.getElementById("menuImportJsonBtn").onclick = () => {
+        closeMenu();
+        const i = document.createElement('input'); i.type = 'file'; i.accept = '.json';
+        i.onchange = e => { if (e.target.files[0]) importJson(e.target.files[0]); };
+        i.click();
+    };
+    document.getElementById("menuThemeBtn").onclick = () => { closeMenu(); toggleTheme(); };
+    document.getElementById("menuChangePinBtn").onclick = () => {
         closeMenu();
         document.getElementById('cpOld').value = '';
         document.getElementById('cpNew').value = '';
@@ -1060,63 +1009,56 @@
         document.getElementById('changePinModal').classList.add('show');
     };
 
-    // 🎂 Зодрӯзи имрӯз менюи тугма
-    document.getElementById('menuBirthdayBtn').onclick = () => {
-        closeMenu();
-        const birthdays = getTodayBirthdays();
-        if (birthdays.length === 0) {
-            alert('🎂 Имрӯз ягон корманд зодрӯз надорад.');
-        } else {
-            const list = birthdays.map(e => `🎂 ${e.fullname}\n   ${e.position}`).join('\n\n');
-            alert(`Имрӯз зодрӯз доранд (${birthdays.length} нафар):\n\n${list}`);
-        }
+    document.getElementById("saveAttendanceBtn").onclick = () => {
+        const ids = [...new Set([...document.querySelectorAll('.present-check')].filter(cb => cb.checked).map(cb => parseInt(cb.dataset.id)))];
+        setAttendance(currentDate, ids);
+        alert(`Ҳозирӣ барои ${currentDate} сабт шуд! (${ids.length} нафар)`);
     };
+    document.getElementById("attendanceDate").addEventListener("change", (e) => { currentDate = e.target.value; renderAll(); });
+    document.getElementById("modalSaveBtn").onclick = () => {
+        const fullname = document.getElementById("empFullname").value.trim();
+        if (!fullname) { alert("Номи пурра ворид кунед!"); return; }
+        const data = {
+            fullname,
+            position: document.getElementById("empPosition").value.trim(),
+            orderNumber: document.getElementById("empOrder").value.trim(),
+            phone: document.getElementById("empPhone").value.trim(),
+            education: document.getElementById("empEducation").value.trim(),
+            birthday: document.getElementById("empBirthday").value.trim(),
+            category: document.getElementById("empCategory").value
+        };
+        if (editingId) {
+            const idx = employees.findIndex(e => e.id === editingId);
+            if (idx !== -1) employees[idx] = { ...employees[idx], ...data };
+        } else {
+            employees.push({ id: nextId++, ...data });
+        }
+        saveEmployees();
+        document.getElementById("employeeModal").classList.remove("show");
+        renderAll();
+        document.getElementById("totalCount").innerText = `👥 ${employees.length} нафар`;
+    };
+    document.getElementById("modalCloseBtn").onclick = () => { document.getElementById("employeeModal").classList.remove("show"); };
+    document.getElementById("searchInput").addEventListener("input", () => renderAll());
+    document.getElementById("attendanceDate").value = currentDate;
 
-    // ===== PIN КЛАВИАТУРА — ТЕЛЕФОН + КОМПЮТЕР =====
-    function addPinButtonHandler(btn, action) {
-        let touched = false;
-        btn.addEventListener('touchstart', function(e) {
-            e.preventDefault();
-            touched = true;
-            action();
-            setTimeout(() => { touched = false; }, 500);
-        }, { passive: false });
-        btn.addEventListener('click', function() {
-            if(touched) return; // touchstart аллакай кор кард
-            action();
-        });
-    }
-
-    // Рақамҳо
-    document.querySelectorAll('.pin-key[data-digit]').forEach(btn => {
-        const digit = btn.getAttribute('data-digit');
-        addPinButtonHandler(btn, () => pinPress(digit));
+    // ===== БАРОМАДАН (LOGOUT) =====
+    document.getElementById('logoutBtn').addEventListener('click', function() {
+        if (confirm('Аз барнома баромадан мехоҳед?')) {
+            pinBuffer = '';
+            updatePinDots();
+            document.getElementById('pinSubtitle').textContent = '4 рақамаи PIN-код';
+            document.getElementById('pinScreen').classList.remove('hidden');
+        }
     });
 
-    // Ўчириш
-    const pinDelBtn = document.getElementById('pinDelBtn');
-    if(pinDelBtn) addPinButtonHandler(pinDelBtn, () => pinDel());
-
-    // Баромад
-    const pinExitBtn = document.getElementById('pinExitBtn');
-    if(pinExitBtn) addPinButtonHandler(pinExitBtn, () => pinExit());
-
-    // Физикии клавиатура (компютер)
-    document.addEventListener('keydown', (e) => {
-        if(document.getElementById('pinScreen').classList.contains('hidden')) return;
-        if(e.key >= '0' && e.key <= '9') pinPress(e.key);
-        if(e.key === 'Backspace') pinDel();
-    });
+    loadData();
 
 </script>
     <script>
     if('serviceWorker' in navigator){
         navigator.serviceWorker.register('./sw.js',{scope:'./'})
-            .then(reg => {
-                console.log('SW OK');
-                // Ҳар вақт кушода шавад update мекунем — кеш муаммо намешавад
-                reg.update();
-            })
+            .then(r=>console.log('SW OK'))
             .catch(e=>console.warn('SW error',e));
     }
     </script>
