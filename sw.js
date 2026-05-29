@@ -1,5 +1,4 @@
-// ⚠️ Версияро иваз кунед ҳар вақт файлро update мекунед → кеш тоза мешавад
-const CACHE_VERSION = 'hr-v4-birthday';
+const CACHE_VERSION = 'hr-v5';
 const CACHE_FILES = [
     './',
     './index.html',
@@ -14,7 +13,6 @@ self.addEventListener('install', e => {
             return cache.addAll(CACHE_FILES);
         })
     );
-    // Фавран activate мешавад — кеши кӯҳна намемонад
     self.skipWaiting();
 });
 
@@ -32,7 +30,6 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
     e.respondWith(
         caches.match(e.request).then(cached => {
-            // Аввал шабака, агар нашуд кеш
             return fetch(e.request)
                 .then(res => {
                     const resClone = res.clone();
