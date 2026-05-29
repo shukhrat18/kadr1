@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'hr-v5';
+const CACHE_VERSION = 'hr-v6';
 const CACHE_FILES = [
     './',
     './index.html',
@@ -9,9 +9,7 @@ const CACHE_FILES = [
 
 self.addEventListener('install', e => {
     e.waitUntil(
-        caches.open(CACHE_VERSION).then(cache => {
-            return cache.addAll(CACHE_FILES);
-        })
+        caches.open(CACHE_VERSION).then(cache => cache.addAll(CACHE_FILES))
     );
     self.skipWaiting();
 });
@@ -19,9 +17,7 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
     e.waitUntil(
         caches.keys().then(keys =>
-            Promise.all(
-                keys.filter(k => k !== CACHE_VERSION).map(k => caches.delete(k))
-            )
+            Promise.all(keys.filter(k => k !== CACHE_VERSION).map(k => caches.delete(k)))
         )
     );
     self.clients.claim();
@@ -29,14 +25,12 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
     e.respondWith(
-        caches.match(e.request).then(cached => {
-            return fetch(e.request)
-                .then(res => {
-                    const resClone = res.clone();
-                    caches.open(CACHE_VERSION).then(cache => cache.put(e.request, resClone));
-                    return res;
-                })
-                .catch(() => cached);
-        })
+        fetch(e.request)
+            .then(res => {
+                const clone = res.clone();
+                caches.open(CACHE_VERSION).then(cache => cache.put(e.request, clone));
+                return res;
+            })
+            .catch(() => caches.match(e.request))
     );
 });
