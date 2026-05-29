@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'hr-v6';
+const CACHE_VERSION = 'hr-v7';
 const CACHE_FILES = [
     './',
     './index.html',
@@ -32,5 +32,16 @@ self.addEventListener('fetch', e => {
                 return res;
             })
             .catch(() => caches.match(e.request))
+    );
+});
+
+// Notification пахш кардани дар болои экран
+self.addEventListener('notificationclick', e => {
+    e.notification.close();
+    e.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+            if (list.length > 0) return list[0].focus();
+            return clients.openWindow('./');
+        })
     );
 });
