@@ -465,6 +465,7 @@
 
 <div class="side-menu" id="sideMenu">
     <button id="menuAddBtn">➕ Корманди нав</button>
+    <button id="menuBirthdayBtn">🎂 Зодрӯзҳои имрӯз</button>
     <button id="menuExportExcelBtn">📎 Export Excel (Ҳозирӣ)</button>
     <button id="menuExportJsonBtn">📄 Export JSON</button>
     <button id="menuImportJsonBtn">📂 Import JSON</button>
@@ -525,6 +526,8 @@
         <input type="text" id="empOrder" placeholder="Рақами фармоиш / шартнома">
         <input type="text" id="empPhone" placeholder="Телефон">
         <input type="text" id="empEducation" placeholder="Маълумот (олӣ, миёнаи касбӣ)">
+        <label style="font-size:12px; color:#666; margin-top:4px; display:block;">🎂 Санаи таваллуд</label>
+        <input type="date" id="empBirthday" placeholder="Санаи таваллуд (ихтиёрӣ)">
         <select id="empCategory">
             <option value="Маъмурият">Маъмурият</option>
             <option value="Кафедраи гуманитарӣ">Кафедраи гуманитарӣ</option>
@@ -761,6 +764,8 @@
         if(savedAtt) attendanceRecords = JSON.parse(savedAtt);
         renderAll();
         document.getElementById("totalCount").innerText = `👥 ${employees.length} нафар`;
+        // Birthday check баъди бор шудан
+        setTimeout(() => { requestNotificationPermission(); showBirthdayBanner(); }, 500);
     }
 
     function saveEmployees() { localStorage.setItem("hr_employees_final_v9", JSON.stringify(employees)); }
@@ -821,6 +826,7 @@
             document.getElementById("empOrder").value = emp.orderNumber || '';
             document.getElementById("empPhone").value = emp.phone || '';
             document.getElementById("empEducation").value = emp.education || '';
+            document.getElementById("empBirthday").value = emp.birthday || '';
             document.getElementById("empCategory").value = emp.category;
             document.getElementById("modalTitle").innerText = "Таҳрири корманд";
             document.getElementById("employeeModal").classList.add("show");
@@ -848,18 +854,89 @@
     function openMenu(){ sideMenu.classList.add("open"); overlay.classList.add("show"); }
     menuBtn.onclick=()=>{ if(sideMenu.classList.contains("open")) closeMenu(); else openMenu(); };
     overlay.onclick=closeMenu;
-    document.getElementById("menuAddBtn").onclick=()=>{ closeMenu(); editingId=null; document.getElementById("empFullname").value=""; document.getElementById("empPosition").value=""; document.getElementById("empOrder").value=""; document.getElementById("empPhone").value=""; document.getElementById("empEducation").value=""; document.getElementById("empCategory").value="Маъмурият"; document.getElementById("modalTitle").innerText="Иловаи корманд"; document.getElementById("employeeModal").classList.add("show"); };
+    document.getElementById("menuAddBtn").onclick=()=>{ closeMenu(); editingId=null; document.getElementById("empFullname").value=""; document.getElementById("empPosition").value=""; document.getElementById("empOrder").value=""; document.getElementById("empPhone").value=""; document.getElementById("empEducation").value=""; document.getElementById("empBirthday").value=""; document.getElementById("empCategory").value="Маъмурият"; document.getElementById("modalTitle").innerText="Иловаи корманд"; document.getElementById("employeeModal").classList.add("show"); };
     document.getElementById("menuExportExcelBtn").onclick=()=>{ closeMenu(); exportAttendanceExcel(); };
     document.getElementById("menuExportJsonBtn").onclick=()=>{ closeMenu(); exportJson(); };
     document.getElementById("menuImportJsonBtn").onclick=()=>{ closeMenu(); const i=document.createElement('input'); i.type='file'; i.accept='.json'; i.onchange=e=>{ if(e.target.files[0]) importJson(e.target.files[0]); }; i.click(); };
     document.getElementById("menuThemeBtn").onclick=()=>{ closeMenu(); toggleTheme(); };
     document.getElementById("saveAttendanceBtn").onclick=()=>{ const ids=[...new Set([...document.querySelectorAll('.present-check')].filter(cb=>cb.checked).map(cb=>parseInt(cb.dataset.id)))]; setAttendance(currentDate,ids); alert(`Ҳозирӣ барои ${currentDate} сабт шуд! (${ids.length} нафар)`); };
     document.getElementById("attendanceDate").addEventListener("change",(e)=>{ currentDate=e.target.value; renderAll(); });
-    document.getElementById("modalSaveBtn").onclick=()=>{ const fullname=document.getElementById("empFullname").value.trim(); if(!fullname){ alert("Номи пурра ворид кунед!"); return; } const data={ fullname, position:document.getElementById("empPosition").value.trim(), orderNumber:document.getElementById("empOrder").value.trim(), phone:document.getElementById("empPhone").value.trim(), education:document.getElementById("empEducation").value.trim(), category:document.getElementById("empCategory").value }; if(editingId){ const idx=employees.findIndex(e=>e.id===editingId); if(idx!==-1) employees[idx]={...employees[idx],...data}; }else{ employees.push({id:nextId++,...data}); } saveEmployees(); document.getElementById("employeeModal").classList.remove("show"); renderAll(); document.getElementById("totalCount").innerText=`👥 ${employees.length} нафар`; };
+    document.getElementById("modalSaveBtn").onclick=()=>{ const fullname=document.getElementById("empFullname").value.trim(); if(!fullname){ alert("Номи пурра ворид кунед!"); return; } const data={ fullname, position:document.getElementById("empPosition").value.trim(), orderNumber:document.getElementById("empOrder").value.trim(), phone:document.getElementById("empPhone").value.trim(), education:document.getElementById("empEducation").value.trim(), birthday:document.getElementById("empBirthday").value.trim(), category:document.getElementById("empCategory").value }; if(editingId){ const idx=employees.findIndex(e=>e.id===editingId); if(idx!==-1) employees[idx]={...employees[idx],...data}; }else{ employees.push({id:nextId++,...data}); } saveEmployees(); document.getElementById("employeeModal").classList.remove("show"); renderAll(); document.getElementById("totalCount").innerText=`👥 ${employees.length} нафар`; checkBirthdaysAndBadge(); };
     document.getElementById("modalCloseBtn").onclick=()=>{ document.getElementById("employeeModal").classList.remove("show"); };
     document.getElementById("searchInput").addEventListener("input",()=>renderAll());
     document.getElementById("attendanceDate").value=currentDate;
     loadData();
+
+    // ======================= BIRTHDAY BADGE & NOTIFICATION =======================
+    function getTodayBirthdays() {
+        const today = new Date();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        return employees.filter(emp => {
+            if (!emp.birthday) return false;
+            const parts = emp.birthday.split('-');
+            if (parts.length < 3) return false;
+            return parts[1] === mm && parts[2] === dd;
+        });
+    }
+
+    function checkBirthdaysAndBadge() {
+        const birthdays = getTodayBirthdays();
+        if (birthdays.length > 0) {
+            // Badge дар болои иконаи PWA
+            if ('setAppBadge' in navigator) {
+                navigator.setAppBadge(birthdays.length).catch(()=>{});
+            }
+            // Notification (агар иҷозат дода шуда бошад)
+            if (Notification.permission === 'granted') {
+                const names = birthdays.map(e => e.fullname.split(' ').slice(0,2).join(' ')).join(', ');
+                new Notification('🎂 Имрӯз таваллуд!', {
+                    body: `${names} — имрӯз зодрӯз доранд!`,
+                    icon: './icon-192.png',
+                    badge: './icon-192.png',
+                    tag: 'birthday-today',
+                    renotify: true
+                });
+            }
+        } else {
+            // Badge тоза мекунем
+            if ('clearAppBadge' in navigator) {
+                navigator.clearAppBadge().catch(()=>{});
+            }
+        }
+    }
+
+    function requestNotificationPermission() {
+        if (!('Notification' in window)) return;
+        if (Notification.permission === 'default') {
+            Notification.requestPermission().then(perm => {
+                if (perm === 'granted') {
+                    checkBirthdaysAndBadge();
+                }
+            });
+        } else {
+            checkBirthdaysAndBadge();
+        }
+    }
+
+    // Birthday banner дар барнома
+    function showBirthdayBanner() {
+        const birthdays = getTodayBirthdays();
+        const existingBanner = document.getElementById('birthdayBanner');
+        if (existingBanner) existingBanner.remove();
+        if (birthdays.length === 0) return;
+        const names = birthdays.map(e => `<strong>${e.fullname.split(' ').slice(0,2).join(' ')}</strong>`).join(', ');
+        const banner = document.createElement('div');
+        banner.id = 'birthdayBanner';
+        banner.innerHTML = `🎂 Имрӯз зодрӯз доранд: ${names} &nbsp;<button onclick="document.getElementById('birthdayBanner').remove()" style="background:none;border:none;cursor:pointer;font-size:16px;float:right;">✕</button>`;
+        banner.style.cssText = 'background:#fff3e0;border-left:4px solid #ff9800;border-radius:12px;padding:10px 14px;margin-bottom:10px;font-size:13px;color:#e65100;position:relative;';
+        const stickyTop = document.querySelector('.sticky-top');
+        stickyTop.insertAdjacentElement('afterend', banner);
+    }
+
+    // Иҷро кардан
+    requestNotificationPermission();
+    showBirthdayBanner();
 
     // ===== БАРОМАДАН (LOGOUT) =====
     document.getElementById('logoutBtn').addEventListener('click', function() {
@@ -965,6 +1042,18 @@
         document.getElementById('cpNew').value = '';
         document.getElementById('cpConfirm').value = '';
         document.getElementById('changePinModal').classList.add('show');
+    };
+
+    // 🎂 Зодрӯзи имрӯз менюи тугма
+    document.getElementById('menuBirthdayBtn').onclick = () => {
+        closeMenu();
+        const birthdays = getTodayBirthdays();
+        if (birthdays.length === 0) {
+            alert('🎂 Имрӯз ягон корманд зодрӯз надорад.');
+        } else {
+            const list = birthdays.map(e => `🎂 ${e.fullname}\n   ${e.position}`).join('\n\n');
+            alert(`Имрӯз зодрӯз доранд (${birthdays.length} нафар):\n\n${list}`);
+        }
     };
 
     // Klaviatura bilan PIN kiritish
